@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "CsprojFormatter": {
+      "commandName": "Project",
+      "commandLineArgs": "C:\\Users\\MichaelBisbjerg\\Git\\Chronos \"C:\\Users\\MichaelBisbjerg\\Git\\Chronos-Auth\" \"C:\\Users\\MichaelBisbjerg\\Git\\Chronos-Build\" \"C:\\Users\\MichaelBisbjerg\\Git\\Chronos-Deploy\" \"C:\\Users\\MichaelBisbjerg\\Git\\Chronos-Imports\" \"C:\\Users\\MichaelBisbjerg\\Git\\Chronos-Modules\" \"C:\\Users\\MichaelBisbjerg\\Git\\Chronos-ModulesAnalyzer\" \"C:\\Users\\MichaelBisbjerg\\Git\\Chronos-ModulesExternal\" \"C:\\Users\\MichaelBisbjerg\\Git\\Chronos-Portal\" \"C:\\Users\\MichaelBisbjerg\\Git\\Chronos-SDK\"  \"C:\\Users\\MichaelBisbjerg\\Git\\Chronos-Shared\" \"C:\\Users\\MichaelBisbjerg\\Git\\Chronos-Utilities\""
+    }
+  }
+}
