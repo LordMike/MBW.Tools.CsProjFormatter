@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -14,35 +13,165 @@ namespace MBW.Tools.CsProjFormatter
 
     }
 
-    internal class ProjectLine
+    interface IXmlVisitor
     {
-        public string Text { get; set; }
-        public int Indent { get; set; }
+        bool BeginFromProject { get; }
+
+        bool Visit(XNode node);
     }
 
-    internal interface ISpecialLine
+    class Newliner : IXmlVisitor
     {
+        public bool BeginFromProject => true;
 
+        public bool Visit(XNode node)
+        {
+            if (node is XElement asElement)
+            {
+                if (asElement.HasElements)
+                    asElement.Add(new XText("\n"));
+
+                if (!"Project".Equals(asElement.Name.LocalName, StringComparison.OrdinalIgnoreCase))
+                    node.AddBeforeSelf(new XText("\n"));
+            }
+            else if (node.NodeType == XmlNodeType.Comment)
+                node.AddBeforeSelf(new XText("\n"));
+
+            return true;
+        }
     }
 
-    internal class SpecialPackageReference : ISpecialLine
+    class Indenter : IXmlVisitor
     {
-        public string PackageName { get; set; }
+        public bool BeginFromProject => false;
 
-        public string Version { get; set; }
+        public bool Visit(XNode node)
+        {
+            if (node.NodeType != XmlNodeType.Element && node.NodeType != XmlNodeType.Comment)
+                return true;
+
+            int parents = 1;
+
+            XNode parent = node;
+            while (parent.Parent != node.Document.Root)
+            {
+                parent = parent.Parent;
+                parents++;
+            }
+
+            string indentText = new string(' ', parents * 2);
+
+            Console.WriteLine(indentText + " " + node.NodeType);
+            node.AddBeforeSelf(new XText(indentText));
+
+            if (node is XElement asElement && asElement.HasElements)
+            {
+                asElement.Add(new XText(indentText));
+            }
+
+            return true;
+        }
     }
 
-    internal class SpecialProjectReference : ISpecialLine
+    class SplitTopLevels : IXmlVisitor
     {
-        public string Project { get; set; }
+        public bool BeginFromProject => false;
+
+        public bool Visit(XNode node)
+        {
+            if (node.NodeType == XmlNodeType.Element)
+            {
+                node.AddBeforeSelf(new XText("\n"));
+
+                if (node.NodesAfterSelf().All(x => x.NodeType == XmlNodeType.Text))
+                    node.AddAfterSelf(new XText("\n"));
+            }
+
+            return false;
+        }
+    }
+
+    class MergeReferences : IXmlVisitor
+    {
+        public bool BeginFromProject => false;
+
+        public bool Visit(XNode node)
+        {
+            if (!(node is XElement asElement) ||
+                !asElement.HasElements ||
+                (!"PackageReference".Equals(asElement.Name.LocalName, StringComparison.OrdinalIgnoreCase) &&
+                 !"ProjectReference".Equals(asElement.Name.LocalName, StringComparison.OrdinalIgnoreCase)))
+                return true;
+
+            // Find all child elements
+            List<XElement> childs = asElement.Descendants().ToList();
+            foreach (XElement element in childs)
+            {
+                List<XNode> elementNodes = element.Nodes().ToList();
+                if (!elementNodes.All(s => s.NodeType == XmlNodeType.Text))
+                    continue;
+
+                // Merge these texts into an attribute
+                string newValue = string.Join(string.Empty, elementNodes.OfType<XText>().Select(s => s.Value));
+
+                asElement.SetAttributeValue(element.Name.LocalName, newValue);
+                element.Remove();
+            }
+
+            return true;
+        }
+    }
+
+    class SortReferences : IXmlVisitor
+    {
+        public bool BeginFromProject => false;
+
+        public bool Visit(XNode node)
+        {
+            if (node is XElement asElement && "ItemGroup".Equals(asElement.Name.LocalName, StringComparison.OrdinalIgnoreCase))
+            {
+                // Check that all child elements are PackageReference & ProjectReference
+                List<XNode> childs = asElement.Nodes().ToList();
+
+                if (childs.OfType<XElement>().All(x =>
+                    "PackageReference".Equals(x.Name.LocalName, StringComparison.OrdinalIgnoreCase) ||
+                    "ProjectReference".Equals(x.Name.LocalName, StringComparison.OrdinalIgnoreCase)))
+                {
+                    // Sort all elements, while moving all nodes before the element with it
+                    List<(string key, XNode[] nodes)> sortList = new List<(string key, XNode[] nodes)>();
+
+                    int lastIdx = 0;
+                    for (int i = 0; i < childs.Count; i++)
+                    {
+                        if (!(childs[i] is XElement childElement))
+                            continue;
+
+                        XAttribute includeAttribute = childElement.Attribute("Include");
+                        string include = includeAttribute?.Value;
+
+                        if (string.IsNullOrEmpty(include))
+                        {
+                            // Try as an element named Include
+                            include = (childElement.DescendantsAndSelf("Include").FirstOrDefault()?.Nodes().SingleOrDefault() as XText)?.Value;
+                        }
+
+                        sortList.Add((include, childs.Skip(lastIdx).Take(1 + i - lastIdx).ToArray()));
+                        lastIdx = i + 1;
+                    }
+
+                    sortList.Sort((a, b) => a.key.CompareTo(b.key));
+
+                    asElement.ReplaceNodes(sortList.SelectMany(s => s.nodes).ToArray());
+                }
+
+            }
+
+            return false;
+        }
     }
 
     internal class Formatter
     {
-        private readonly Regex _selfClosingTag = new Regex(@"/>[\s]*$", RegexOptions.Compiled);
-        private readonly Regex _hasClosingTag = new Regex(@"</[^>]+>[\s]*$", RegexOptions.Compiled);
-        private readonly Regex _hasOpeningTag = new Regex(@"^<[\w]+(?: [^>]+)?>", RegexOptions.Compiled);
-        private readonly Regex _shouldSort = new Regex(@"^<(?:PackageReference|ProjectReference) ", RegexOptions.Compiled | RegexOptions.IgnoreCase);
         private readonly FormatterSettings _settings;
         private readonly UTF8Encoding _encoding = new UTF8Encoding(false);
 
@@ -51,113 +180,52 @@ namespace MBW.Tools.CsProjFormatter
             _settings = settings ?? new FormatterSettings();
         }
 
-        private List<ProjectLine> Load(string source)
+        private void ProcessVisitors(XDocument doc, IXmlVisitor visitor)
         {
-            XDocument doc = XDocument.Parse(source, LoadOptions.PreserveWhitespace);
+            Stack<XNode> nodes = new Stack<XNode>();
 
-            List<ProjectLine> lines = new List<ProjectLine>();
-            using (MemoryStream strm = new MemoryStream())
+            if (visitor.BeginFromProject)
             {
-                using (XmlWriter wr = XmlWriter.Create(strm, new XmlWriterSettings
-                {
-                    Encoding = _encoding,
-                    IndentChars = "  ",
-                    Indent = true,
-                    OmitXmlDeclaration = true,
-                    CloseOutput = false
-                }))
-                {
-                    doc.WriteTo(wr);
-                }
-
-                strm.Seek(0, SeekOrigin.Begin);
-
-                using (StreamReader sr = new StreamReader(strm, _encoding))
-                {
-                    string line;
-                    while ((line = sr.ReadLine()) != null)
-                        lines.Add(new ProjectLine { Text = line });
-                }
+                nodes.Push(doc.Root);
+            }
+            else
+            {
+                foreach (XNode node in doc.Root.Nodes().Reverse())
+                    nodes.Push(node);
             }
 
-            // Trim all lines
-            for (int i = 1; i < lines.Count; i++)
-                lines[i].Text = lines[i].Text.Trim();
-
-            // Indent
-            int indent = 0;
-            for (int i = 0; i < lines.Count; i++)
+            while (nodes.TryPop(out XNode node))
             {
-                ProjectLine line = lines[i];
+                bool @continue = visitor.Visit(node);
 
-                if (line.Text == string.Empty)
+                if (!@continue)
                     continue;
 
-                bool isOpening = _hasOpeningTag.IsMatch(line.Text);
-                bool isSelfClosing = _selfClosingTag.IsMatch(line.Text);
-                bool isClosing = _hasClosingTag.IsMatch(line.Text);
-
-                if (isClosing && !isOpening)
-                    indent--;
-
-                line.Indent = indent;
-
-                if (isOpening && !isClosing && !isSelfClosing)
+                if (node is XElement asElement)
                 {
-                    indent++;
-                }
-            }
-
-            return lines;
-        }
-
-        private void ParseSpecialLines(IList<ProjectLine> lines)
-        {
-            foreach (ProjectLine projectLine in lines)
-            {
-                if (projectLine.Text.StartsWith("<PackageReference", StringComparison.OrdinalIgnoreCase))
-                {
-
-                }
-                else if (projectLine.Text.StartsWith("<ProjectReference", StringComparison.OrdinalIgnoreCase))
-                {
-
+                    foreach (XNode child in asElement.Nodes().Reverse())
+                        nodes.Push(child);
                 }
             }
         }
 
         public string Format(string source)
         {
-            var lines = Load(source);
+            XDocument doc = XDocument.Parse(source);
 
-            // Sort all consecutive package references
-            var shouldSortIndexes = lines.Select(s => _shouldSort.IsMatch(s)).ToArray();
+            List<IXmlVisitor> visitors = new List<IXmlVisitor>();
+            visitors.Add(new MergeReferences());
+            visitors.Add(new SortReferences());
+            visitors.Add(new SplitTopLevels());
+            visitors.Add(new Newliner());
+            visitors.Add(new Indenter());
 
-            int offset = 0;
-            while (true)
+            foreach (IXmlVisitor visitor in visitors)
             {
-                var first = Array.FindIndex(shouldSortIndexes, offset, x => x);
-                if (first < 0)
-                    break;
-
-                var last = Array.FindIndex(shouldSortIndexes, first, x => !x);
-                offset = last;
-
-                // Sort first..last
-                lines.Sort(first, last - first, StringComparer.OrdinalIgnoreCase);
+                ProcessVisitors(doc, visitor);
             }
 
-            // Find consecutive blank lines
-            for (int i = 1; i < lines.Count; i++)
-            {
-                if (!string.IsNullOrWhiteSpace(lines[i - 1]) || !string.IsNullOrWhiteSpace(lines[i]))
-                    continue;
-
-                lines.RemoveAt(i);
-                i--;
-            }
-
-            return string.Join(Environment.NewLine, lines);
+            return doc.ToString(SaveOptions.DisableFormatting);
         }
     }
 
@@ -171,11 +239,10 @@ namespace MBW.Tools.CsProjFormatter
                 return 1;
             }
 
-            throw new Exception("Does not handle multiline tags when sorting ... -.-'");
-
             IEnumerable<string> files = args.SelectMany(s =>
                 Directory.EnumerateFiles(s, "*.csproj", SearchOption.AllDirectories)
-                    .Concat(Directory.EnumerateFiles(s, "*.targets", SearchOption.AllDirectories)));
+                    .Concat(Directory.EnumerateFiles(s, "*.targets", SearchOption.AllDirectories)))
+                .Take(1);
 
             Formatter formatter = new Formatter();
 
@@ -192,6 +259,8 @@ namespace MBW.Tools.CsProjFormatter
                     continue;
 
                 File.WriteAllText(file, res, enc);
+
+                //break;
             }
 
             return 0;
