@@ -106,14 +106,20 @@ namespace MBW.Tools.CsProjFormatter.Library
                 fs.SetLength(0);
 
                 using (StreamWriter sw = new StreamWriter(fs, encoding, 4096, true))
-                using (XmlWriter xw = XmlWriter.Create(sw, new XmlWriterSettings
-                {
-                    OmitXmlDeclaration = true
-                }))
                 {
                     sw.NewLine = settings.NewlineCharacter;
 
-                    doc.WriteTo(xw);
+                    using (XmlWriter xw = XmlWriter.Create(sw, new XmlWriterSettings
+                    {
+                        OmitXmlDeclaration = true,
+                        CloseOutput = false
+                    }))
+                    {
+                        doc.WriteTo(xw);
+                    }
+
+                    if (settings.InsertFinalNewline)
+                        sw.WriteLine();
                 }
             }
         }

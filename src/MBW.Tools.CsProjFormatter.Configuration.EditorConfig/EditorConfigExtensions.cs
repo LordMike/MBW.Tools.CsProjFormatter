@@ -70,6 +70,27 @@ namespace MBW.Tools.CsProjFormatter.Configuration.EditorConfig
                             throw new ArgumentOutOfRangeException();
                     }
                 }
+
+                if (configuration.InsertFinalNewline.HasValue)
+                    settings.InsertFinalNewline = configuration.InsertFinalNewline.Value;
+
+                if (configuration.Properties.TryGetValue("csproj_prefer_package_reference_attributes", out string strValue))
+                {
+                    if (bool.TryParse(strValue, out bool boolValue))
+                        settings.PreferPackageReferenceAttributes = boolValue;
+                }
+
+                if (configuration.Properties.TryGetValue("csproj_sort_package_project_references", out strValue))
+                {
+                    if (bool.TryParse(strValue, out bool boolValue))
+                        settings.SortPackageProjectReferences = boolValue;
+                }
+
+                if (configuration.Properties.TryGetValue("csproj_split_top_level_elements", out strValue))
+                {
+                    if (bool.TryParse(strValue, out bool boolValue))
+                        settings.SplitTopLevelElements = boolValue;
+                }
             }
         }
     }

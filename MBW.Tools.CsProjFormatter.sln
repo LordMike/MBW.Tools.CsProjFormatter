@@ -7,7 +7,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{9F511F81-8F9
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MBW.Tools.CsProjFormatter", "src\MBW.Tools.CsProjFormatter\MBW.Tools.CsProjFormatter.csproj", "{ED50A6C7-3E87-4356-8D08-A99EA8B3D67A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MBW.Tools.CsProjFormatter.Library", "src\MBW.Tools.CsProjFormatter.Library\MBW.Tools.CsProjFormatter.Library.csproj", "{5E9FB439-CDA6-48D2-B1C3-F4E8683424BE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MBW.Tools.CsProjFormatter.Library", "src\MBW.Tools.CsProjFormatter.Library\MBW.Tools.CsProjFormatter.Library.csproj", "{5E9FB439-CDA6-48D2-B1C3-F4E8683424BE}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MBW.Tools.CsProjFormatter.Configuration.EditorConfig", "src\MBW.Tools.CsProjFormatter.Configuration.EditorConfig\MBW.Tools.CsProjFormatter.Configuration.EditorConfig.csproj", "{C515946E-E0E0-49D0-B52A-60CB5FED3A5A}"
 EndProject
