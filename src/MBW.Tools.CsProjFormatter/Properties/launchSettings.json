@@ -2,7 +2,7 @@
   "profiles": {
     "CsprojFormatter": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Users\\MichaelBisbjerg\\Git\\Chronos-SDK\""
+      "commandLineArgs": "-n C:\\Users\\MichaelBisbjerg\\Git\\Chronos*"
     }
   }
 }

@@ -8,24 +8,33 @@ using MBW.Tools.CsProjFormatter.Library;
 using MBW.Tools.CsProjFormatter.Library.Configuration;
 using McMaster.Extensions.CommandLineUtils;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.Logging;
+using Serilog;
+using Serilog.Events;
 
 namespace MBW.Tools.CsProjFormatter
 {
     public class SettingsModel
     {
         [Option("-l|--log-level", Description = "Logging level")]
-        public LogLevel LogLevel { get; set; } = LogLevel.Information;
-
-        [Option("-e", Description = "Extensions to format, comma separated. Default: 'csproj,targets'")]
-        public string ExtensionsToFormat { get; set; } = "csproj,targets";
+        public LogEventLevel LogLevel { get; set; } = LogEventLevel.Information;
 
         [Option("-n", Description = "Enable to make no changes")]
         public bool DryRun { get; set; }
 
+        [Option("-d", Description = "Do not exclude 'obj/*.targets' and 'bin/*.targets' by default.")]
+        public bool NoDefaultExcludes { get; set; }
+
+        [Option("--exclude", Description = "Exclude this globbing pattern. Can be set multiple times")]
+        public string[] Excludes { get; set; }
+
+        [Option("--include", Description = "Include this globbing pattern, defaults to '**/*.csproj' and '**/*.targets'")]
+        public string[] Includes { get; set; } = { "**/*.csproj", "**/*.targets" };
+
         [Required]
-        [Argument(0, "Files or directories")]
-        public string[] Arguments { get; set; }
+        [Argument(0, "Directories")]
+        public string[] Directories { get; set; }
     }
 
     enum ExitCode
@@ -49,39 +58,34 @@ namespace MBW.Tools.CsProjFormatter
 
         public ExitCode Run()
         {
-            _logger.LogDebug("Beginning formatting run, {Count} arguments were provided", _settings.Arguments.Length);
+            _logger.LogDebug("Identifying file to process in {Count} directories. {CountInclude} includes, {CountExclude} excludes were provided", _settings.Directories.Length, _settings.Includes?.Length ?? 0, _settings.Excludes?.Length ?? 0);
 
-            string[] extensionsToFind = _settings.ExtensionsToFormat.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                .Select(s =>
-                {
-                    if (s.StartsWith("."))
-                        return "*" + s;
-                    if (s.StartsWith("*."))
-                        return s;
-                    return "*." + s;
-                })
-                .ToArray();
+            Matcher globber = new Matcher(StringComparison.OrdinalIgnoreCase);
 
-            foreach (string argument in _settings.Arguments)
+            if (_settings.Includes != null)
+                globber.AddIncludePatterns(_settings.Includes);
+
+            if (_settings.Excludes != null)
+                globber.AddExcludePatterns(_settings.Excludes);
+
+            if (!_settings.NoDefaultExcludes)
+            {
+                globber.AddExclude("**/obj/**.targets");
+                globber.AddExclude("**/bin/**.targets");
+            }
+
+            foreach (string directory in _settings.Directories)
             {
                 using (_logger.BeginScope(new Dictionary<string, object>
                 {
-                    {"Argument", argument}
+                    {"Directory", directory}
                 }))
                 {
-                    _logger.LogDebug("Beginning formatting run on {Argument}", argument);
+                    _logger.LogDebug("Searching for files in {Directory}", directory);
 
-                    if (File.Exists(argument))
+                    if (Directory.Exists(directory))
                     {
-                        _logger.LogTrace("{Argument} is a file", argument);
-
-                        HandleFile(_formatter, argument);
-                    }
-                    else if (Directory.Exists(argument))
-                    {
-                        _logger.LogTrace("{Argument} is a directory", argument);
-
-                        IEnumerable<string> files = extensionsToFind.SelectMany(s => Directory.EnumerateFiles(argument, s, SearchOption.AllDirectories));
+                        IEnumerable<string> files = globber.GetResultsInFullPath(directory);
 
                         foreach (string file in files)
                         {
@@ -90,7 +94,7 @@ namespace MBW.Tools.CsProjFormatter
                     }
                     else
                     {
-                        _logger.LogWarning("{Argument} was not found", argument);
+                        _logger.LogWarning("{Directory} was not found", directory);
                     }
                 }
             }
@@ -124,6 +128,23 @@ namespace MBW.Tools.CsProjFormatter
         {
             return serviceProvider.GetRequiredService<ILogger<T>>();
         }
+
+        public static string[] ExpandPath(string path)
+        {
+            var lastIdx = path.LastIndexOfAny(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar });
+
+            if (lastIdx < 0)
+                return new[] { path };
+
+            var dir = path.Substring(0, lastIdx);
+            var name = path.Substring(lastIdx + 1);
+
+            var dirs = Directory.GetDirectories(dir, name);
+            if (dirs.Any())
+                return dirs;
+
+            return new[] { path };
+        }
     }
 
     class Program
@@ -137,25 +158,38 @@ namespace MBW.Tools.CsProjFormatter
 
             app.OnExecute(() =>
             {
+                Log.Logger = new LoggerConfiguration()
+                    .MinimumLevel.Is(app.Model.LogLevel)
+                    .Enrich.FromLogContext()
+                    .WriteTo.Console()
+                    .CreateLogger();
+
+                // Post-process settings
+                app.Model.Directories = app.Model.Directories.SelectMany(Extensions.ExpandPath).ToArray();
+
+                // Setup host
                 IServiceCollection services = new ServiceCollection();
 
                 services.AddSingleton(app.Model);
                 services.AddSingleton<FormatterProgram>();
 
                 services
-                    .AddSingleton(x =>
+                    .AddSingleton<IFormatterSettingsFactory>(x =>
                     {
                         ILogger<Program> logger = x.GetLogger<Program>();
                         logger.LogDebug("Prepared formatter with EditorConfig support");
 
-                        return new FormatterSettingsFactory().AddEditorConfig();
+                        FormatterSettingsFactory formatterSettingsFactory = ActivatorUtilities.CreateInstance<FormatterSettingsFactory>(x);
+                        formatterSettingsFactory.AddEditorConfig();
+
+                        return formatterSettingsFactory;
                     })
                     .AddSingleton<Formatter>();
 
                 services.AddLogging(builder =>
                 {
-                    builder.SetMinimumLevel(app.Model.LogLevel);
-                    builder.AddConsole();
+                    builder.SetMinimumLevel(LogLevel.Trace);
+                    builder.AddSerilog(Log.Logger);
                 });
 
                 ExitCode result;
