@@ -13,6 +13,8 @@ namespace MBW.Tools.CsProjFormatter
         private readonly Formatter _formatter;
         private readonly ILogger<FormatterProgram> _logger;
 
+        public int ProcessedFiles { get; private set; }
+
         public FormatterProgram(SettingsModel settings, Formatter formatter, ILogger<FormatterProgram> logger)
         {
             _settings = settings;
@@ -54,6 +56,8 @@ namespace MBW.Tools.CsProjFormatter
                         foreach (string file in files)
                         {
                             HandleFile(_formatter, file);
+
+                            ProcessedFiles++;
                         }
                     }
                     else
@@ -79,7 +83,7 @@ namespace MBW.Tools.CsProjFormatter
                     return;
                 }
 
-                _logger.LogInformation("Processing file {File}", file);
+                _logger.LogDebug("Processing file {File}", file);
 
                 formatter.FormatFile(file);
             }

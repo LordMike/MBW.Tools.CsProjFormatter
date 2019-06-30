@@ -2,12 +2,19 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace MBW.Tools.CsProjFormatter.Library.Visitors
 {
     class SortReferences : IXmlVisitor
     {
+        private readonly ILogger _logger;
         public bool BeginFromProject => false;
+
+        public SortReferences(ILogger logger)
+        {
+            _logger = logger;
+        }
 
         public bool Visit(XNode node)
         {
@@ -24,32 +31,57 @@ namespace MBW.Tools.CsProjFormatter.Library.Visitors
                     List<(string key, XNode[] nodes)> sortList = new List<(string key, XNode[] nodes)>();
 
                     int lastIdx = 0;
+                    bool doSort = true;
                     for (int i = 0; i < childs.Count; i++)
                     {
                         if (!(childs[i] is XElement childElement))
                             continue;
 
-                        XAttribute includeAttribute = childElement.Attribute("Include");
-                        string include = includeAttribute?.Value;
+                        string packageName = GetAttributeOrChild(childElement, "Include");
 
-                        if (string.IsNullOrEmpty(include))
+                        if (string.IsNullOrEmpty(packageName))
+                            packageName = GetAttributeOrChild(childElement, "Update");
+
+                        if (string.IsNullOrEmpty(packageName))
+                            packageName = GetAttributeOrChild(childElement, "Remove");
+
+                        if (string.IsNullOrEmpty(packageName))
                         {
-                            // Try as an element named Include
-                            include = (childElement.DescendantsAndSelf("Include").FirstOrDefault()?.Nodes().SingleOrDefault() as XText)?.Value;
+                            // Error, do not sort this
+                            _logger.LogWarning("File {File} has references that cannot be sorted");
+                            doSort = false;
+                            break;
                         }
 
-                        sortList.Add((include, childs.Skip(lastIdx).Take(1 + i - lastIdx).ToArray()));
+                        sortList.Add((packageName, childs.Skip(lastIdx).Take(1 + i - lastIdx).ToArray()));
                         lastIdx = i + 1;
                     }
 
-                    sortList.Sort((a, b) => a.key.CompareTo(b.key));
+                    if (doSort)
+                    {
+                        sortList.Sort((a, b) => a.key.CompareTo(b.key));
 
-                    asElement.ReplaceNodes(sortList.SelectMany(s => s.nodes).ToArray());
+                        asElement.ReplaceNodes(sortList.SelectMany(s => s.nodes).ToArray());
+                    }
                 }
 
             }
 
             return false;
+        }
+
+        private string GetAttributeOrChild(XElement element, string name)
+        {
+            XAttribute includeAttribute = element.Attribute(name);
+            string include = includeAttribute?.Value;
+
+            if (string.IsNullOrEmpty(include))
+            {
+                // Try as an element named Include
+                include = (element.DescendantsAndSelf(name).FirstOrDefault()?.Nodes().SingleOrDefault() as XText)?.Value;
+            }
+
+            return include;
         }
     }
 }

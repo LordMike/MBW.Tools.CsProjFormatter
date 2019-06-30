@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using MBW.Tools.CsProjFormatter.Configuration.EditorConfig;
 using MBW.Tools.CsProjFormatter.Library;
@@ -61,12 +62,19 @@ namespace MBW.Tools.CsProjFormatter
                     ILogger<Program> logger = provider.GetLogger<Program>();
                     FormatterProgram program = provider.GetRequiredService<FormatterProgram>();
 
+                    Stopwatch sw = new Stopwatch();
                     try
                     {
+                        sw.Start();
                         result = program.Run();
+                        sw.Stop();
+
+                        logger.LogInformation("Completed processing of {Count} files in {Time}", program.ProcessedFiles, sw.Elapsed);
                     }
                     catch (Exception e)
                     {
+                        sw.Stop();
+
                         logger.LogCritical(e, "An error occurred while running the program");
                         result = ExitCode.Error;
                     }

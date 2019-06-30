@@ -5,27 +5,33 @@ using System.Text;
 using System.Xml;
 using System.Xml.Linq;
 using MBW.Tools.CsProjFormatter.Library.Configuration;
+using MBW.Tools.CsProjFormatter.Library.Utilities;
 using MBW.Tools.CsProjFormatter.Library.Visitors;
+using Microsoft.Extensions.Logging;
 
 namespace MBW.Tools.CsProjFormatter.Library
 {
     public class Formatter
     {
         private readonly IFormatterSettingsFactory _settingsFactory;
+        private readonly ILogger<Formatter> _logger;
 
-        public Formatter()
+        public Formatter(ILogger<Formatter> logger = null)
         {
+            _logger = logger;
             _settingsFactory = new DummyFormatterSettingsFactory(new FormatterSettings());
         }
 
-        public Formatter(FormatterSettings settings)
+        public Formatter(FormatterSettings settings, ILogger<Formatter> logger = null)
         {
+            _logger = logger;
             _settingsFactory = new DummyFormatterSettingsFactory(settings ?? new FormatterSettings());
         }
 
-        public Formatter(IFormatterSettingsFactory settingsFactory)
+        public Formatter(IFormatterSettingsFactory settingsFactory, ILogger<Formatter> logger = null)
         {
             _settingsFactory = settingsFactory;
+            _logger = logger;
         }
 
         private void ProcessVisitors(XDocument doc, IXmlVisitor visitor)
@@ -66,7 +72,7 @@ namespace MBW.Tools.CsProjFormatter.Library
                 visitors.Add(new MergePackageReferenceAttributes());
 
             if (settings.SortPackageProjectReferences)
-                visitors.Add(new SortReferences());
+                visitors.Add(new SortReferences(new PrefixingLogger(_logger, "SortReferences: ")));
 
             if (settings.SplitTopLevelElements)
                 visitors.Add(new SplitTopLevels());
