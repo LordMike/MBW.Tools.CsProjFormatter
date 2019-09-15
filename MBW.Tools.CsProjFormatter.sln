@@ -11,6 +11,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MBW.Tools.CsProjFormatter.L
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MBW.Tools.CsProjFormatter.Configuration.EditorConfig", "src\MBW.Tools.CsProjFormatter.Configuration.EditorConfig\MBW.Tools.CsProjFormatter.Configuration.EditorConfig.csproj", "{C515946E-E0E0-49D0-B52A-60CB5FED3A5A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{79558370-7DB3-410D-A202-53826D4A4A2C}"
+	ProjectSection(SolutionItems) = preProject
+		README.md = README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
