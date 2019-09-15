@@ -2,7 +2,7 @@
   "profiles": {
     "CsprojFormatter": {
       "commandName": "Project",
-      "commandLineArgs": "C:\\Users\\MichaelBisbjerg\\Git\\Chronos* --exclude=\"_GlobalImports\""
+      "commandLineArgs": "C:\\Users\\MichaelBisbjerg\\Git\\csproj-formatter --exclude=\"_GlobalImports\" -l Debug"
     }
   }
 }

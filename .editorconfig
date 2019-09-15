@@ -1,0 +1,8 @@
+[*.{csproj,targets}]
+charset = utf-8
+csproj_prefer_package_reference_attributes = true
+csproj_sort_package_project_references = true
+csproj_split_top_level_elements = true
+indent_size = 2
+indent_style = space
+insert_final_newline = true
