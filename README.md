@@ -6,7 +6,7 @@ Dotnet tool to format `.csproj` files.
 
 ## Installation
 
-Run `dotnet tool -g install MBW.Tools.CsProjFormatter`. After this, `csproj-format` should be in your PATH.
+Run `dotnet tool install -g MBW.Tools.CsProjFormatter`. After this, `csproj-format` should be in your PATH.
 
 ## Usage
 
