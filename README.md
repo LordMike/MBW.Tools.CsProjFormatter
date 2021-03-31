@@ -1,8 +1,6 @@
-# MBW.Tools.CsProjFormatter
+# MBW.Tools.CsProjFormatter [![Generic Build](https://github.com/LordMike/MBW.Tools.CsProjFormatter/actions/workflows/dotnet.yml/badge.svg)](https://github.com/LordMike/MBW.Tools.CsProjFormatter/actions/workflows/dotnet.yml) [![NuGet](https://img.shields.io/nuget/v/MBW.Tools.CsProjFormatter.svg)](https://www.nuget.org/packages/MBW.Tools.CsProjFormatter) [![GHPackages](https://img.shields.io/badge/package-alpha-green)](https://github.com/LordMike/MBW.Tools.CsProjFormatter/packages/703133)
 
 Dotnet tool to format `.csproj` files. 
-
-![Nuget](https://img.shields.io/nuget/v/MBW.Tools.CsProjFormatter)
 
 ## Installation
 
