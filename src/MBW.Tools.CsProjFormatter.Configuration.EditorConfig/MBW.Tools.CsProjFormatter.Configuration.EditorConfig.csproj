@@ -1,11 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\..\_Imports\Library.targets" />
+
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="editorconfig" Version="0.12.1" />
+    <PackageReference Include="editorconfig" Version="0.12.2" />
   </ItemGroup>
 
   <ItemGroup>

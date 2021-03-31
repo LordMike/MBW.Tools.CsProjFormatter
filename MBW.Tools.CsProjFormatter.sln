@@ -13,7 +13,14 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MBW.Tools.CsProjFormatter.C
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{79558370-7DB3-410D-A202-53826D4A4A2C}"
 	ProjectSection(SolutionItems) = preProject
+		Directory.Build.props = Directory.Build.props
 		README.md = README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_Imports", "_Imports", "{4E7AB767-DBD8-46D7-ABFA-06673687B892}"
+	ProjectSection(SolutionItems) = preProject
+		_Imports\Library.targets = _Imports\Library.targets
+		_Imports\Local.targets = _Imports\Local.targets
 	EndProjectSection
 EndProject
 Global
@@ -70,6 +77,7 @@ Global
 		{ED50A6C7-3E87-4356-8D08-A99EA8B3D67A} = {9F511F81-8F99-4CDF-93AA-4555F7DF0A6E}
 		{5E9FB439-CDA6-48D2-B1C3-F4E8683424BE} = {9F511F81-8F99-4CDF-93AA-4555F7DF0A6E}
 		{C515946E-E0E0-49D0-B52A-60CB5FED3A5A} = {9F511F81-8F99-4CDF-93AA-4555F7DF0A6E}
+		{4E7AB767-DBD8-46D7-ABFA-06673687B892} = {79558370-7DB3-410D-A202-53826D4A4A2C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {11A7E58C-74A7-4198-B64E-F0DA60AAE3C0}
