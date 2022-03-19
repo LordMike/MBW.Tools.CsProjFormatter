@@ -1,8 +1,6 @@
-[*.{csproj,targets}]
-charset = utf-8
-csproj_prefer_package_reference_attributes = true
-csproj_sort_package_project_references = true
-csproj_split_top_level_elements = true
-indent_size = 2
-indent_style = space
-insert_final_newline = true
+﻿[*.cs]
+# CS4014: Because this call is not awaited, execution of the current method continues before the call is completed
+dotnet_diagnostic.CS4014.severity = error
+
+# CS1591: Missing XML comment for publicly visible type or member 'Type_or_Member'
+dotnet_diagnostic.CS1591.severity = hidden
