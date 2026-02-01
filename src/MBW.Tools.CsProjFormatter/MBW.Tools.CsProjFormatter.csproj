@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net5.0</TargetFramework>
-    <OutputType>Exe</OutputType>
+    <TargetFramework>$(DefaultTargetFramework)</TargetFramework>
+        <OutputType>Exe</OutputType>
     <Description>.NET global tool to format .csproj and .target files ensuring a consistent indentation, and sorting any dependencies lexicographically. Configurable using editorconfig or commandlines.</Description>
   </PropertyGroup>
 
