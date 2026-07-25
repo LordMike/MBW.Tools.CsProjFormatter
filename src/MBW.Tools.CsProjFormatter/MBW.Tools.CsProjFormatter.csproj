@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
     <TargetFramework>$(DefaultTargetFramework)</TargetFramework>
         <OutputType>Exe</OutputType>
     <Description>.NET global tool to format .csproj and .target files ensuring a consistent indentation, and sorting any dependencies lexicographically. Configurable using editorconfig or commandlines.</Description>
